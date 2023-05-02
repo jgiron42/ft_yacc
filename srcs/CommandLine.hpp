@@ -1,0 +1,16 @@
+#ifndef FT_YACC_POC_COMMANDLINE_HPP
+#define FT_YACC_POC_COMMANDLINE_HPP
+#include <string>
+
+struct CommandLine {
+	std::string input_file;
+	std::string file_prefix;
+	std::string sym_prefix;
+	bool		write_header;
+	bool		write_description;
+	bool		debug_defines;
+	CommandLine(int argc, char **argv);
+};
+
+
+#endif
