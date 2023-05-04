@@ -38,7 +38,7 @@ ${OBJS_DIR}/%.o: ${SRCS_DIR}/%.cpp
 	$(CXX) $(CXXFLAGS) ${INCLUDE_ARG} -MMD -c $< -o $@
 
 ${SRCS_DIR}/%.yy.cpp: ${SRCS_DIR}/%.l
-	$(LEX) -o $@ $<
+	$(LEX) -r ${SRCS_DIR}/ -+ -b $* $<
 
 $(MAKE_DEP):
 	make -C $(dir $@) $(notdir $@)

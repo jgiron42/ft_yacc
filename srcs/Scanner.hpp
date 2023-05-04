@@ -6,9 +6,10 @@
 #include <list>
 #include <deque>
 #include <variant>
-
-class Scanner {
+#include "./scanner.yy.hpp"
+class Scanner : public yyLexer {
 public:
+	std::ifstream stream;
 	struct token {
 		enum token_type {
 			END = 0,
@@ -23,6 +24,10 @@ public:
 			MARK,
 			START,
 			UNION,
+			VARIANT,
+			USE_CPP_LEX,
+			FILENAME,
+			TAG,
 			PREC,
 			LCURL,
 			RCURL,
@@ -58,6 +63,10 @@ public:
 					"MARK",
 					"START",
 					"UNION",
+					"VARIANT",
+					"USE_CPP_LEX",
+					"FILENAME",
+					"TAG",
 					"PREC",
 					"LCURL",
 					"RCURL",

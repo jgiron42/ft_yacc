@@ -1,0 +1,19 @@
+#ifndef YY_TAB_H
+# define YY_TAB_H
+
+%%[DEFINES]%%
+
+#ifndef YYSTYPE
+typedef %%[YYSTYPE]%% YYSTYPE;
+#endif
+#if YYDEBUG
+extern int yydebug;
+#endif
+extern YYSTYPE			%%[SYM_PREFIX]%%lval;
+int						%%[SYM_PREFIX]%%parse(void);
+
+enum yy_token_definitions {
+	%%[TOKEN_DEFS]%%
+};
+
+#endif

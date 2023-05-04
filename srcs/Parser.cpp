@@ -32,6 +32,14 @@ void Parser::parse_def() {
 			this->config.stack_type = "union " + expect(Scanner::token::ACTION).value;
 			this->config.union_enabled = true;
 		}
+		else if (accept(Scanner::token::VARIANT))
+			this->config.variant_enabled = true;
+		else if (accept(Scanner::token::USE_CPP_LEX))
+		{
+			this->config.use_cpp_lex = true;
+			if (auto filename = accept(Scanner::token::FILENAME))
+				this->config.lex_header = filename->value;
+		}
 		else if (auto c = accept(Scanner::token::HEADER_CODE))
 			this->config.header_code.append(c->value);
 		else if (auto rword = accept({Scanner::token::TOKEN, Scanner::token::RIGHT, Scanner::token::LEFT, Scanner::token::NONASSOC}))
@@ -54,7 +62,7 @@ void Parser::parse_def() {
 					associativity = LALR::Token::Associativity::NONASSOC;
 					break;
 			}
-			auto type = get_tag();
+			auto type = accept(Scanner::token::TAG);
 			std::optional<Scanner::token> name_tok = expect(Scanner::token::IDENTIFIER);
 			do {
 				int value;
@@ -70,14 +78,14 @@ void Parser::parse_def() {
 					this->add_error(name_tok->file, name_tok->line, e.what(), SyntaxError::Error);
 				}
 				if (type)
-					this->config.token_types[name_tok->value] = type.value();
+					this->config.token_types[name_tok->value] = type->value;
 			} while ((name_tok = accept(Scanner::token::IDENTIFIER)).has_value());
 		}
 		else if (accept({Scanner::token::TYPE}))
 		{
-			auto type = get_tag(true);
+			auto type = expect(Scanner::token::TAG);
 			std::optional<Scanner::token> name_tok = expect(Scanner::token::IDENTIFIER);
-			do this->config.token_types[name_tok->value] = type.value();
+			do this->config.token_types[name_tok->value] = type.value;
 			while ((name_tok = accept(Scanner::token::IDENTIFIER)));
 		}
 		else
@@ -149,24 +157,29 @@ std::string Parser::substitute_action(const std::string & symbol, std::vector<st
 		if (std::regex_search(s2, mr, pseudo_var, std::regex_constants::match_continuous))
 		{
 			std::string type;
+			std::string access;
 			if (mr[3].str()[0] == '$')
-				ret.append("yylval");
+				access = "yylval";
 			else if (symbol[0] == '@')
-				ret.append("YY_STACK_ELEMENT(" + std::to_string(syntax.size()) + "-" + mr[3].str() + ")");
+				access = "YY_STACK_ELEMENT(" + std::to_string(syntax.size()) + "-" + mr[3].str() + ")";
 			else
-				ret.append("YY_STACK_ELEMENT(" + mr[3].str() + ")");
-			if (config.union_enabled)
+				access = "YY_STACK_ELEMENT(" + mr[3].str() + ")";
+			if (config.union_enabled || config.variant_enabled)
 			{
+				std::string type;
 				if (mr[2].matched)
-					ret.append("." + mr[2].str());
+					type = mr[2].str();
 				else if (mr[3].str()[0] == '$' && this->config.token_types.contains(symbol))
-					ret.append("." + this->config.token_types[symbol]);
+					type = this->config.token_types[symbol];
 				else if (int n = atoi(mr[3].str().c_str()); mr[3].str()[0] != '$' && n > 0 && n <= syntax.size() &&
-															this->config.token_types.contains(syntax[n - 1]))
-					ret.append("." + this->config.token_types[syntax[n - 1]]);
+					this->config.token_types.contains(syntax[n - 1]))
+					type = this->config.token_types[syntax[n - 1]];
 				else
 					throw std::runtime_error(mr.str() + " of `" + symbol + "` has no declared type");
+				this->config.types.insert(type);
+				access = "YY_ACCESS_TYPE(" + access + ", " + type + ")";
 			}
+			ret.append(access);
 			i += mr[0].str().size() - 1;
 		}
 		else

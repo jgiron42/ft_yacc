@@ -8,10 +8,11 @@ CommandLine::CommandLine(int argc, char **argv) :
 	sym_prefix("yy"),
 	write_header(false),
 	write_description(false),
-	debug_defines(false)
+	debug_defines(false),
+	language("c")
 {
 	while (1)
-		switch (getopt(argc, argv, "-dltvb:p:"))
+		switch (getopt(argc, argv, "-dltvb:p:r:+"))
 		{
 			case 'd':
 				this->write_header = true;
@@ -21,6 +22,9 @@ CommandLine::CommandLine(int argc, char **argv) :
 			case 't':
 				this->debug_defines = true;
 				break;
+			case '+':
+				this->language = "c++";
+				break;
 			case 'v':
 				this->write_description = true;
 				break;
@@ -29,6 +33,9 @@ CommandLine::CommandLine(int argc, char **argv) :
 				break;
 			case 'p':
 				this->sym_prefix = optarg;
+				break;
+			case 'r':
+				this->root = std::string(optarg) + '/';
 				break;
 			case 1:
 				this->input_file = optarg;

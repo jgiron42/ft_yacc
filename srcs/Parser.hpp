@@ -22,10 +22,14 @@ public:
 		std::map<std::string, token>		tokens;
 		std::map<std::string, std::string>	token_types;
 		std::string							start;
-		std::string 						stack_type;
 		bool								union_enabled;
+		std::string 						stack_type;
+		bool 								variant_enabled;
+		std::set<std::string>				types; // for c++ variants
 		std::string							header_code;
 		std::string							tail_code;
+		bool 								use_cpp_lex;
+		std::string							lex_header;
 	};
 	class UnexpectedToken : public std::runtime_error {
 	public:

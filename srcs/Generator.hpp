@@ -1,29 +1,21 @@
-#ifndef FT_YACC_POC_GENERATOR_HPP
-#define FT_YACC_POC_GENERATOR_HPP
-#include "LALR.hpp"
-#include "Parser.hpp"
-#include <ostream>
-#include "CommandLine.hpp"
+//
+// Created by citron on 5/2/23.
+//
+
+#ifndef FT_LEX_GENERATOR_HPP
+#define FT_LEX_GENERATOR_HPP
+#include <map>
+#include <fstream>
+#include <string>
+#include <regex>
 
 class Generator {
 private:
-	const LALR				&lalr;
-	const CommandLine		&commandLine;
-	const Parser::Config	&config;
+	std::map<std::string, std::string> definitions;
 public:
-	Generator(Parser::Config &, CommandLine &, LALR &);
-	void generate_c(std::ostream &) const;
-	void generate_h(std::ostream &) const;
-private:
-	void put_cpp_headers(std::ostream &) const;
-	void put_common_headers(std::ostream &) const;
-	void put_cpp_routines(std::ostream &) const;
-	void put_yyparse(std::ostream &) const;
-	void put_cpp_tables(std::ostream &) const;
-	static std::string substitute(const std::string &) ;
-	template <typename T>
-	void put_array(std::ostream &, const std::vector<T> &) const;
+	void	set(std::string, std::string);
+	void	generate(std::string skeleton, std::string dst);
 };
 
 
-#endif
+#endif //FT_LEX_GENERATOR_HPP

@@ -305,12 +305,12 @@ void LALR::build(const std::string &start) {
 	this->sr_conflicts = 0;
 	this->rr_conflicts = 0;
 	add_token_mapping("error");
-	for (size_t i = 0; i < this->states.size() && i < 50; i++)
+	for (size_t i = 0; i < this->states.size(); i++)
 	{
 //		std::cout << "State: " << i << std::endl;
 		build_state(this->states[i]);
 	}
-	for (;!this->updated_states.empty() && this->states.size() < 50; this->updated_states.pop())
+	for (;!this->updated_states.empty(); this->updated_states.pop())
 	{
 		this->generate_reduces(this->states[this->updated_states.front()]);
 		this->generate_shifts_and_gotos(this->states[this->updated_states.front()]);

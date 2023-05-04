@@ -1,0 +1,56 @@
+#ifndef YY_TAB_H
+# define YY_TAB_H
+# include "%%[DEF_NAME]%%"
+# include  <stddef.h>
+# include  <malloc.h>
+# ifdef YY_USE_CPP_LEX
+#  include %%[LEX_HEADER]%%
+# endif
+# if YYDEBUG
+extern int yydebug;
+# endif
+extern YYSTYPE			%%[SYM_PREFIX]%%lval;
+int						%%[SYM_PREFIX]%%parse(void);
+
+
+class yyParser {
+private:
+	typedef int yy_state_t;
+	typedef struct {
+		yy_state_t		state;
+		int				token;
+		YYSTYPE			value;
+	}				yy_stack_type;
+
+	yy_stack_type	*yy_stack = NULL;
+	size_t			yy_stack_size = 0;
+	size_t			yy_stack_cap = 0;
+#ifdef YY_USE_CPP_LEX
+	%%[SYM_PREFIX]%%Lexer	&lexer;
+#endif
+	static constexpr int yy_map_token[] = %%[MAP_TOKEN_TABLE]%%;
+
+	static constexpr int yy_reduce_table[] = %%[REDUCE_TABLE]%%;
+
+	static constexpr int yy_reduce_tokens[] = %%[REDUCE_TOKENS_TABLE]%%;
+
+	static constexpr yy_state_t yy_yacc_transitions[][%%[TRANSITION_TABLE_SIZE]%%] = %%[TRANSITION_TABLE]%%;
+
+public:
+#ifdef YY_USE_CPP_LEX
+	yyParser(%%[SYM_PREFIX]%%Lexer &lexer);
+#else
+	yyParser();
+#endif
+	int yyparse();
+private:
+	int yy_stack_push(yy_stack_type value);
+	void yy_stack_pop(size_t n);
+	yy_stack_type *yy_stack_top();
+	int	yy_lookahead();
+	int	yy_shift(int state);
+	int yyinternal_yyparse(void);
+
+};
+
+#endif

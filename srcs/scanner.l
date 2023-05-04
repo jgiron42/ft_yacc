@@ -5,6 +5,7 @@
 DIGIT    		[[:digit:]]
 C_IDENTIFIER	[[:alpha:]_][[:alnum:]_]*
 LITERAL			'([^\\']|\\.|\\[0-7]{1,3}|\\x[[:xdigit:]]{1,2})'
+STRING			\"([^"\]|\\.)*\"
 
 %{
 	#include <regex>
@@ -37,6 +38,12 @@ static int	old_state = -1;
 
 <INITIAL>%right return Scanner::token::RIGHT;
 
+<INITIAL>%variant return Scanner::token::VARIANT;
+
+<INITIAL>%use_cpp_lex return Scanner::token::USE_CPP_LEX;
+
+<INITIAL>{STRING} return Scanner::token::FILENAME;
+
 <INITIAL>%type return Scanner::token::TYPE;
 
 <INITIAL>%nonassoc return Scanner::token::NONASSOC;
@@ -49,10 +56,16 @@ static int	old_state = -1;
 
 <INITIAL>%union return Scanner::token::UNION;
 
-<RULES>{C_IDENTIFIER}/[[:blank:]]*: return Scanner::token::C_IDENTIFIER;
+<RULES>{C_IDENTIFIER}/[[:space:]]*: return Scanner::token::C_IDENTIFIER;
 
 <RULES,INITIAL>{LITERAL}		|
 <RULES,INITIAL>{C_IDENTIFIER}	return Scanner::token::IDENTIFIER;
+
+"<"[^>]+">" {
+	yytext[yyleng-1] = 0;
+	yytext++;
+	return Scanner::token::TAG;
+}
 
 <RULES,INITIAL>{DIGIT}+	return Scanner::token::NUMBER;
 

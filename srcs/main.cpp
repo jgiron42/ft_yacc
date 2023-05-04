@@ -1,9 +1,14 @@
 #include <fstream>
 #include "Scanner.hpp"
+#include "Serializer.hpp"
 #include "Generator.hpp"
 #include "LALR.hpp"
 #include "Parser.hpp"
 #include "CommandLine.hpp"
+#ifndef SKELETONS_PATHS
+# define SKELETONS_PATHS "./"
+#endif
+
 
 int main(int argc, char **argv)
 {
@@ -30,14 +35,25 @@ int main(int argc, char **argv)
             lalr.print(output);
         }
 
-        Generator generator(parser.get_config(), commandLine, lalr);
-        std::ofstream c(commandLine.file_prefix + ".tab.c");
-        generator.generate_c(c);
-
-        if (commandLine.write_header) {
-            std::ofstream h(commandLine.file_prefix + ".tab.h");
-            generator.generate_h(h);
-        }
+        Serializer serializer(parser.get_config(), commandLine, lalr);
+		serializer.build();
+		if (commandLine.language == "c" ) {
+			serializer.get_generator().generate(SKELETONS_PATHS "/c.skl",
+												commandLine.root + commandLine.file_prefix + ".tab.c");
+			if (commandLine.write_header)
+				serializer.get_generator().generate(SKELETONS_PATHS "/h.skl",
+													commandLine.root + commandLine.file_prefix + ".tab.h");
+		}
+		else if (commandLine.language == "c++" ) {
+			serializer.get_generator().set("HEADER_NAME", commandLine.file_prefix + ".tab.hpp");
+			serializer.get_generator().set("DEF_NAME", commandLine.file_prefix + ".def.hpp");
+			serializer.get_generator().generate(SKELETONS_PATHS "/cpp.skl",
+												commandLine.root + commandLine.file_prefix + ".tab.cpp");
+			serializer.get_generator().generate(SKELETONS_PATHS "/hpp.skl",
+													commandLine.root + commandLine.file_prefix + ".tab.hpp");
+			serializer.get_generator().generate(SKELETONS_PATHS "/def.skl",
+													commandLine.root + commandLine.file_prefix + ".def.hpp");
+		}
     }
     catch (std::exception &e)
     {

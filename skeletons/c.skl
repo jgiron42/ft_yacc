@@ -1,0 +1,239 @@
+
+%%[DEFINES]%%
+
+#ifndef YYSTYPE
+typedef %%[YYSTYPE]%% YYSTYPE;
+#endif
+#if YYDEBUG
+extern int yydebug;
+#endif
+extern YYSTYPE			%%[SYM_PREFIX]%%lval;
+int						%%[SYM_PREFIX]%%parse(void);
+
+enum yy_token_definitions {
+	%%[TOKEN_DEFS]%%
+};
+
+%%[SYMBOL_DEFS]%%
+
+%%[HEADER_CODE]%%
+
+#include <sys/types.h>
+#include <string.h>
+#define YY_STACK_ELEMENT(N) (yy_stack[yy_stack_size - 1 + (N - 1)].value)
+#define YY_ACCESS_TYPE(ELEM, TYPE) (ELEM.TYPE)
+#define YYRECOVERING (yy_error_state != 0)
+#define YYERROR do {yy_error_state=4;goto yy_end_of_semantic_action;} while (0)
+#define yyerrok do {yy_error_state = 0;} while (0)
+#define yyclearin do {if (yy_stack_size) yy_stack_top()->token = -1;} while (0)
+#define YYACCEPT do {return 0;} while (0)
+#define YYABORT do {return 1;} while (0)
+#define YY_END 0
+#define YY_EPSILON 1
+
+#define YY_ACCEPT %%[ACCEPT_STATE]%%
+
+typedef int yy_state_t;
+
+typedef struct {
+	yy_state_t		state;
+	int				token;
+	YYSTYPE			value;
+}				yy_stack_type;
+
+yy_stack_type	*yy_stack = NULL;
+size_t			yy_stack_size = 0;
+size_t			yy_stack_cap = 0;
+YYSTYPE			yylval;
+#if YYDEBUG
+int yydebug = 0;
+#endif
+
+
+
+
+int yy_map_token[] = %%[MAP_TOKEN_TABLE]%%;
+
+int yy_reduce_table[] = %%[REDUCE_TABLE]%%;
+
+int yy_reduce_tokens[] = %%[REDUCE_TOKENS_TABLE]%%;
+
+yy_state_t yy_yacc_transitions[][%%[TRANSITION_TABLE_SIZE]%%] = %%[TRANSITION_TABLE]%%;
+
+
+
+int yy_stack_push(yy_stack_type value)
+{
+	if (yy_stack_size >= yy_stack_cap) {
+		yy_stack_cap = yy_stack_cap ? 2 * yy_stack_cap : 50;
+		yy_stack = realloc(yy_stack, yy_stack_cap * sizeof(yy_stack_type));
+		if (!yy_stack)
+			return 1;
+	}
+	yy_stack[yy_stack_size] = value;
+	yy_stack_size++;
+	return 0;
+}
+
+void yy_stack_pop(size_t n)
+{
+//	if (n > yy_stack_size)
+//		yy_stack_size = 0;
+//	else
+	yy_stack_size -= n;
+}
+
+yy_stack_type *yy_stack_top()
+{
+	return yy_stack + yy_stack_size - 1;
+}
+
+int	yy_lookahead()
+{
+	if (yy_stack_top()->token == -1)
+	{
+		int yytok = yylex();
+#ifdef YYDEBUG
+		if (yydebug)
+			fprintf(stderr, "lex %d\n", yytok);
+#endif
+		if (yytok < 0)
+			yytok = 0;
+		if (yytok >= (sizeof(yy_map_token) / sizeof(*yy_map_token)) || (yytok != 0 && !yy_map_token[yytok]))
+			yy_stack_top()->token = -2;
+		else
+			yy_stack_top()->token = yy_map_token[yytok];
+		yy_stack_top()->value = yylval;
+	}
+	return yy_stack_top()->token;
+}
+
+int	yy_shift(int state)
+{
+	return yy_stack_push((yy_stack_type){state, -1});
+}
+
+
+int yyinternal_yyparse(void)
+{
+	int yy_error_state = 0;
+	yy_shift(0);
+	while (yy_stack_top()->state != YY_ACCEPT)
+	{
+		int yytok;
+#ifdef YYDEBUG
+		if (yydebug)
+		{
+			fprintf(stderr, "state: %d\n", yy_stack_top()->state);
+			if (yy_yacc_transitions[yy_stack_top()->state][YY_EPSILON] >= 0)
+				fprintf(stderr, "lookahead: %d\n", yy_lookahead());
+		}
+#endif
+		if (yy_yacc_transitions[yy_stack_top()->state][YY_EPSILON] < 0) // epsilon reduce
+		{
+			yytok = YY_EPSILON;
+			goto yy_reduce;
+		}
+		else if (yy_lookahead() >= 0 && yy_yacc_transitions[yy_stack_top()->state][yy_lookahead()] > 0) // shift
+		{
+#ifdef YYDEBUG
+			if (yydebug)
+				fprintf(stderr, "shift and go to %d\n", yy_yacc_transitions[yy_stack_top()->state][yy_lookahead()]);
+#endif
+			int yystate = yy_yacc_transitions[yy_stack_top()->state][yy_lookahead()];
+			yy_shift(yystate);
+			if (YYRECOVERING)
+				yy_error_state--;
+		}
+		else if (yy_lookahead() >= 0 && yy_yacc_transitions[yy_stack_top()->state][yy_lookahead()] < 0) // reduce
+		{
+			yytok = yy_lookahead();
+			yy_reduce:;
+#ifdef YYDEBUG
+			if (yydebug)
+				fprintf(stderr, "reduce with rule %d\n", -yy_yacc_transitions[yy_stack_top()->state][yytok]);
+#endif
+			int yy_rule = -yy_yacc_transitions[yy_stack_top()->state][yytok];
+			int yy_lookahead = yy_stack_top()->token;
+			yy_stack_pop(yy_reduce_table[-yy_yacc_transitions[yy_stack_top()->state][yytok]]);
+			switch (yy_rule)
+			{
+				%%[RULES]%%
+			}
+
+			yy_end_of_semantic_action:;
+			yy_stack_top()->token = yy_reduce_tokens[yy_rule];
+			yy_stack_top()->value = yylval;
+#ifdef YYDEBUG
+			if (yydebug)
+				fprintf(stderr, "goto %d\n", yy_yacc_transitions[yy_stack_top()->state][yy_stack_top()->token]);
+#endif
+			yy_stack_push((yy_stack_type){ yy_yacc_transitions[yy_stack_top()->state][yy_stack_top()->token], yy_lookahead });
+			if (yy_error_state == 4) // special value, set by YYERROR
+			{
+				yy_error_state = 0;
+				goto yy_error_lbl;
+			}
+		}
+		else // error
+		{
+			if (!YYRECOVERING
+#ifdef YYDEBUG
+				|| yydebug
+#endif
+					)
+				yyerror("syntax error");
+			yy_error_lbl:;
+			if (yy_error_state == 3)
+			{
+				if (yy_lookahead() == YY_END)
+					return 1;
+				yy_stack_top()->token = -1;
+#ifdef YYDEBUG
+				if (yydebug)
+					fprintf(stderr, "discard\n");
+#endif
+			}
+//			else
+//			{
+			int save_lookahead = yy_stack_top()->token;
+			YYSTYPE save_lookahead_value = yy_stack_top()->value;
+			while (yy_stack_size > 0 &&	yy_yacc_transitions[yy_stack_top()->state][yy_map_token[error]] <= 0)
+				yy_stack_pop(1);
+			if (yy_stack_size == 0)
+			{
+#ifdef YYDEBUG
+				if (yydebug)
+						fprintf(stderr, "stack is empty, stop the parsing\n");
+#endif
+				return 1;
+			}
+			yy_shift(yy_yacc_transitions[yy_stack_top()->state][yy_map_token[error]]);
+#ifdef YYDEBUG
+			if (yydebug)
+					fprintf(stderr, "shift error token\n");
+#endif
+			yy_stack_top()->token = save_lookahead;
+			yy_stack_top()->value = save_lookahead_value;
+			yy_error_state = 3;
+//			}
+		}
+	}
+#ifdef YYDEBUG
+	if (yydebug)
+		fprintf(stderr, "accept\n");
+#endif
+	return 0;
+}
+
+int yyparse(void)
+{
+	yy_stack = NULL;
+	yy_stack_size = 0;
+	yy_stack_cap = 0;
+	int ret = yyinternal_yyparse();
+	free(yy_stack);
+	return ret;
+}
+
+%%[TAIL_CODE]%%

@@ -1,0 +1,17 @@
+#ifndef YY_DEF_H
+# define YY_DEF_H
+%%[DEFINES]%%
+# ifdef YY_COMPLETE_SYMBOL
+#  include <variant>
+# endif
+# define %%[SYM_PREFIX]%%Parser yyParser
+%%[HEADER_CODE]%%
+# ifndef YYSTYPE
+typedef %%[YYSTYPE]%% YYSTYPE;
+# endif
+
+enum yy_token_definitions {
+	%%[TOKEN_DEFS]%%
+};
+
+#endif
