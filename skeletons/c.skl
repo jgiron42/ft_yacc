@@ -155,7 +155,7 @@ int yyinternal_yyparse(void)
 #endif
 			int yy_rule = -yy_yacc_transitions[yy_stack_top()->state][yytok];
 			int yy_lookahead = yy_stack_top()->token;
-			yy_stack_pop(yy_reduce_table[-yy_yacc_transitions[yy_stack_top()->state][yytok]]);
+			yy_stack_pop(yy_reduce_table[yy_rule]);
 			switch (yy_rule)
 			{
 				%%[RULES]%%
