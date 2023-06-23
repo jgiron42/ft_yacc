@@ -120,7 +120,7 @@ int is_balanced(char *s)
 			bracket--;
 		std::cmatch mr;
 		if (std::regex_search(s + i, mr, string_and_comment, std::regex_constants::match_continuous))
-			i += mr[0].str().size();
+			i += mr[0].str().size() - 1;
 		else if (std::regex_search(s + i, mr, partial_string_and_comment, std::regex_constants::match_continuous))
 			return 0;
 	}
