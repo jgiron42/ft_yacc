@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 
 
         if (commandLine.write_description) {
-            std::ofstream output(commandLine.file_prefix + ".output");
+            std::ofstream output(commandLine.root + commandLine.file_prefix + ".output");
             lalr.print(output);
         }
 
