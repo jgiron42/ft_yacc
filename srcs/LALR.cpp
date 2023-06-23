@@ -160,7 +160,11 @@ void LALR::derivate_state_rules(LALR::State &state) {
 				if (it == state.rules.end())
 					state.rules.push_back({symbol_rule.second, 0, lookahead});
 				else
-					it->lookahead.insert(lookahead.begin(), lookahead.end());
+				{
+					for (auto &s : lookahead)
+						if (it->lookahead.insert(s).second && (it - state.rules.begin()) - 1 < i)
+							i = (it - state.rules.begin()) - 1; // rederivate this one
+				}
 			}
 		}
 	}
@@ -201,6 +205,10 @@ std::set<std::string> LALR::get_lookahead(const std::string &non_terminal) {
 		}
 	}
 	cache[non_terminal] = ret;
+//	std::cout << "lookahead for " << non_terminal << ": ";
+//	for (auto &t : ret)
+//		std::cout << t << " ";
+//	std::cout << std::endl;
 	return ret;
 }
 
@@ -264,11 +272,15 @@ void LALR::solve_conflicts(State &state) {
 						break;
 					default:
 						state.reduces.erase(k);
+//						std::cout << "sr conflict: " << shifts.begin()->first << " " << (reduces.begin())->first << std::endl;
 						this->sr_conflicts++;
 				}
 			}
 			if (nreduces > 1)
+			{
+//				std::cout << "rr conflict: " << reduces.begin()->first << " " << (++reduces.begin())->first << std::endl;
 				this->rr_conflicts++;
+			}
 		}
 		else if (nreduces > 1) // reduce reduce conflict
 		{
@@ -286,6 +298,7 @@ void LALR::solve_conflicts(State &state) {
 					state.reduces.insert(tmp);
 					break;
 				}
+//			std::cout << "rr conflict: " << reduces.begin()->first << " " << (++reduces.begin())->first << std::endl;
 			this->rr_conflicts++;
 		}
 
