@@ -3,11 +3,11 @@
 
 #include <sys/types.h>
 #include <string.h>
-#define YY_STACK_ELEMENT(N) (yy_stack[yy_stack_size - 1 + (N - 1)].value)
+#define YY_STACK_ELEMENT(N) (yy_stack[yy_stack.size() - 1 - yy_reduce_table[-yy_yacc_transitions[yy_stack_top()->state][yytok]] + (N - 1)].value)
 #ifdef YY_COMPLETE_SYMBOL
 # include <variant>
 // variant
-# define YY_ACCESS_TYPE(ELEM, TYPE) (std::get<TYPE>(ELEM))
+# define YY_ACCESS_TYPE(ELEM, TYPE) (yy_get_or_emplace<TYPE>(ELEM))
 #else
 // union
 # define YY_ACCESS_TYPE(ELEM, TYPE) (ELEM.TYPE)
@@ -15,7 +15,7 @@
 #define YYRECOVERING (yy_error_state != 0)
 #define YYERROR do {yy_error_state=4;goto yy_end_of_semantic_action;} while (0)
 #define yyerrok do {yy_error_state = 0;} while (0)
-#define yyclearin do {if (yy_stack_size) yy_stack_top()->token = -1;} while (0)
+#define yyclearin do {if (!yy_stack.empty()) yy_stack.top()->token = -1;} while (0)
 #define YYACCEPT do {return 0;} while (0)
 #define YYABORT do {return 1;} while (0)
 #define YY_END 0
@@ -35,28 +35,18 @@ yyParser::yyParser()
 
 int yyParser::yy_stack_push(yyParser::yy_stack_type value)
 {
-	if (yy_stack_size >= yy_stack_cap) {
-		yy_stack_cap = yy_stack_cap ? 2 * yy_stack_cap : 50;
-		yy_stack = (yyParser::yy_stack_type*)realloc(yy_stack, yy_stack_cap * sizeof(yy_stack_type));
-		if (!yy_stack)
-			return 1;
-	}
-	yy_stack[yy_stack_size] = value;
-	yy_stack_size++;
+	this->yy_stack.emplace_back(value);
 	return 0;
 }
 
 void yyParser::yy_stack_pop(size_t n)
 {
-//	if (n > yy_stack_size)
-//		yy_stack_size = 0;
-//	else
-	yy_stack_size -= n;
+	this->yy_stack.erase(this->yy_stack.end() - n, this->yy_stack.end());
 }
 
 yyParser::yy_stack_type *yyParser::yy_stack_top()
 {
-	return yy_stack + yy_stack_size - 1;
+	return &this->yy_stack.back();
 }
 
 int	yyParser::yy_lookahead()
@@ -73,7 +63,6 @@ int	yyParser::yy_lookahead()
 #else
 		int yytok = yylex();
 #endif
-//#endif
 
 #ifdef YYDEBUG
 		if (yydebug)
@@ -85,11 +74,11 @@ int	yyParser::yy_lookahead()
 			yy_stack_top()->token = -2;
 		else
 			yy_stack_top()->token = yy_map_token[yytok];
-//#ifdef YY_COMPLETE_SYMBOL
-//		yy_stack_top()->value = p.second;
-//#else
+#ifdef YY_COMPLETE_SYMBOL
+		yy_stack_top()->value = p.second;
+#else
 		yy_stack_top()->value = yylval;
-//#endif
+#endif
 	}
 	return yy_stack_top()->token;
 }
@@ -140,21 +129,19 @@ int yyParser::yyinternal_yyparse(void)
 				fprintf(stderr, "reduce with rule %d\n", -yy_yacc_transitions[yy_stack_top()->state][yytok]);
 #endif
 			int yy_rule = -yy_yacc_transitions[yy_stack_top()->state][yytok];
-			int yy_lookahead = yy_stack_top()->token;
-			yy_stack_pop(yy_reduce_table[-yy_yacc_transitions[yy_stack_top()->state][yytok]]);
 			switch (yy_rule)
 			{
 				%%[RULES]%%
 			}
 
 			yy_end_of_semantic_action:;
-			yy_stack_top()->token = yy_reduce_tokens[yy_rule];
-			yy_stack_top()->value = yylval;
+			this->yy_stack.insert(this->yy_stack.end() - yy_reduce_table[yy_rule] - 1, {(this->yy_stack.end() - yy_reduce_table[yy_rule] - 1)->state, yy_reduce_tokens[yy_rule], yylval});
+			this->yy_stack.erase(this->yy_stack.end() - yy_reduce_table[yy_rule] - 1, this->yy_stack.end() - 1);
+			yy_stack_top()->state = yy_yacc_transitions[(this->yy_stack.end() - 2)->state][(this->yy_stack.end() - 2)->token];
 #ifdef YYDEBUG
 			if (yydebug)
-				fprintf(stderr, "goto %d\n", yy_yacc_transitions[yy_stack_top()->state][yy_stack_top()->token]);
+				fprintf(stderr, "goto %d\n", yy_stack_top()->state);
 #endif
-			yy_stack_push((yy_stack_type){ yy_yacc_transitions[yy_stack_top()->state][yy_stack_top()->token], yy_lookahead });
 			if (yy_error_state == 4) // special value, set by YYERROR
 			{
 				yy_error_state = 0;
@@ -184,9 +171,9 @@ int yyParser::yyinternal_yyparse(void)
 //			{
 			int save_lookahead = yy_stack_top()->token;
 			YYSTYPE save_lookahead_value = yy_stack_top()->value;
-			while (yy_stack_size > 0 &&	yy_yacc_transitions[yy_stack_top()->state][yy_map_token[error]] <= 0)
+			while (yy_stack.size() > 0 && yy_yacc_transitions[yy_stack_top()->state][yy_map_token[error]] <= 0)
 				yy_stack_pop(1);
-			if (yy_stack_size == 0)
+			if (yy_stack.empty())
 			{
 #ifdef YYDEBUG
 				if (yydebug)
@@ -212,13 +199,17 @@ int yyParser::yyinternal_yyparse(void)
 	return 0;
 }
 
+void yyParser::yy_show_stack()
+{
+	std::cout << "stack:" << std::endl;
+	for (auto &e : this->yy_stack)
+		std::cout << " " << e.token << " " << e.value.index() << std::endl;
+}
+
 int yyParser::yyparse(void)
 {
-	yy_stack = NULL;
-	yy_stack_size = 0;
-	yy_stack_cap = 0;
+	yy_stack.clear();
 	int ret = yyinternal_yyparse();
-	free(yy_stack);
 	return ret;
 }
 

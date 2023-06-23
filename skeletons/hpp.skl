@@ -3,6 +3,7 @@
 # include "%%[DEF_NAME]%%"
 # include  <stddef.h>
 # include  <malloc.h>
+# include  <vector>
 # ifdef YY_USE_CPP_LEX
 #  include %%[LEX_HEADER]%%
 # endif
@@ -22,9 +23,7 @@ private:
 		YYSTYPE			value;
 	}				yy_stack_type;
 
-	yy_stack_type	*yy_stack = NULL;
-	size_t			yy_stack_size = 0;
-	size_t			yy_stack_cap = 0;
+	std::vector<yy_stack_type> yy_stack;
 #ifdef YY_USE_CPP_LEX
 	%%[SYM_PREFIX]%%Lexer	&lexer;
 #endif
@@ -50,6 +49,16 @@ private:
 	int	yy_lookahead();
 	int	yy_shift(int state);
 	int yyinternal_yyparse(void);
+	void yy_show_stack(void);
+
+#ifdef YY_COMPLETE_SYMBOL
+	template <typename T>
+	static T &yy_get_or_emplace(YYSTYPE &e)
+	{
+		T *ret = std::get_if<T>(&e);
+		return ret ? *ret : (e).emplace<T>();
+	}
+#endif
 
 };
 
