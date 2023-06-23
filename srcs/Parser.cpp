@@ -116,7 +116,13 @@ void Parser::parse_rules() {
 					if (component->type == Scanner::token::IDENTIFIER)
 						r.syntax.push_back(component->value);
 					else if (is_of_type({Scanner::token::IDENTIFIER, Scanner::token::ACTION}))
-						r.syntax.push_back(get_action_rule(component->value, r.syntax));
+					{
+						try {
+							r.syntax.push_back(get_action_rule(component->value, r.syntax));
+						} catch (std::exception &e) {
+							this->add_error(file, line, e.what(), SyntaxError::Error);
+						}
+					}
 					else
 						r.action = component->value;
 				if (accept(Scanner::token::PREC))
@@ -144,7 +150,7 @@ void Parser::parse_rules() {
 
 std::string Parser::substitute_action(const std::string & symbol, std::vector<std::string> syntax, const std::string &action) {
 	static std::regex comments_and_strings("(/\\*([^*]|\\*[^/])*\\*/|\"(\\\\([^\n]|[0-7]{1,3}|x[[:xdigit:]]{1,2})|[^\n\"\\\\])*\")", std::regex_constants::extended);
-	static std::regex pseudo_var("\\$(<([[:alpha:]_][[:alnum:]_]*)>)?(\\$|-?[[:digit:]]+)", std::regex_constants::extended);
+	static std::regex pseudo_var("\\$(<([^>]+)>)?(\\$|-?[[:digit:]]+)", std::regex_constants::extended);
 	std::string ret;
 	for (int i = 0; i < action.size(); i++)
 	{
@@ -161,7 +167,7 @@ std::string Parser::substitute_action(const std::string & symbol, std::vector<st
 			if (mr[3].str()[0] == '$')
 				access = "yylval";
 			else if (symbol[0] == '@')
-				access = "YY_STACK_ELEMENT(" + std::to_string(syntax.size()) + "-" + mr[3].str() + ")";
+				access = "YY_STACK_ELEMENT(" + mr[3].str() + "-" + std::to_string(syntax.size()) + ")";
 			else
 				access = "YY_STACK_ELEMENT(" + mr[3].str() + ")";
 			if (config.union_enabled || config.variant_enabled)
@@ -225,6 +231,7 @@ std::optional<std::string> Parser::get_tag(bool expected)
 
 std::string Parser::get_action_rule(const std::string &action, std::vector<std::string> syntax) {
 	std::string sym = lalr.generate_symbol_name();
+	this->lalr.add_token(sym, {false, -1, LALR::Token::DEFAULT}); // add the token to the list of token
 	this->lalr.add_rule({sym, {}, "", substitute_action(sym, syntax, action)});
 	return sym;
 }
