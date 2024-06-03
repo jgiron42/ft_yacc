@@ -1,4 +1,5 @@
 #include "LALR.hpp"
+#include <algorithm>
 #include "utils.hpp"
 #include <unordered_set>
 
@@ -106,11 +107,10 @@ void LALR::generate_shifts_and_gotos(LALR::State &state) {
 		for (auto &[sym, sr] : std::ranges::subrange(lower_bound, upper_bound))
 		{
 			if (is_terminal(sym))
-				state.shifts.insert({sym, {dst, get_rule_precedence(this->rules[sr.rule_id])}});
+				state.shifts.insert({sym, {dst, this->tokens[sym].precedence}});
 			else
 				state.gotos.insert({sym, dst});
 		}
-
 	}
 }
 
@@ -146,9 +146,9 @@ void LALR::derivate_state_rules(LALR::State &state) {
 				throw std::runtime_error("nonterminal " + r.syntax[sr.pos] + " has no production rule");
 			std::set<std::string> lookahead = {};
 			std::set<std::string> non_terminals = {};
-			if (sr.pos + 1 < r.syntax.size())
-				lookahead = get_lookahead(r.syntax[sr.pos + 1]);
-			else if (!sr.lookahead.empty())
+			for (int i = sr.pos + 1; lookahead.empty() && i < r.syntax.size(); i++)
+				lookahead = get_lookahead(r.syntax[i]);
+			if (lookahead.empty() && !sr.lookahead.empty())
 				lookahead = sr.lookahead;
 			for (auto &symbol_rule: std::ranges::subrange(symbol_rules.first, symbol_rules.second))
 			{
@@ -354,13 +354,13 @@ bool LALR::is_terminal(const std::string &sym) const {
 	return false;
 }
 
-int LALR::get_rule_precedence(const Rule &r) {
+int LALR::get_rule_precedence(const Rule &r) const {
 	if (!r.precedence.empty())
-		return this->tokens[r.precedence].precedence;
+		return this->tokens.find(r.precedence)->second.precedence;
 	int prec = -1;
 	for (auto &sym : r.syntax)
 		if (is_terminal(sym))
-			prec = this->tokens[sym].precedence;
+			prec = this->tokens.find(sym)->second.precedence;
 	return prec;
 }
 
@@ -513,14 +513,15 @@ void LALR::print(std::ostream &out) const {
 			out << std::endl;
 		}
 		out << std::endl;
-		for (auto &s : this->states[i].shifts)
-			out << "\t" << s.first << " shift, and go to state " << s.second.first << std::endl;
+		for (auto it = this->states[i].shifts.begin();it != this->states[i].shifts.end(); it = this->states[i].shifts.upper_bound(it->first))
+			out << "\t" << it->first << " shift, and go to state " << it->second.first << std::endl;
 		out << std::endl;
-		for (auto &r : this->states[i].reduces)
-			out << "\t" << r.first << " reduce using rule " << r.second.first << " (" << this->rules[r.second.first].symbol << ")" << std::endl;
+		for (auto it = this->states[i].reduces.begin();it != this->states[i].reduces.end(); it = this->states[i].reduces.upper_bound(it->first))
+			out << "\t" << it->first << " reduce using rule " << it->second.first << " (" << this->rules[it->second.first].symbol << ")" << std::endl;
 		out << std::endl;
-		for (auto &s : this->states[i].gotos)
-			out << "\t" << s.first << " go to state " << s.second << std::endl;
+		for (auto it = this->states[i].gotos.begin();it != this->states[i].gotos.end(); it = this->states[i].gotos.upper_bound(it->first))
+			out << "\t" << it->first << " go to state " << it->second << std::endl;
 		out << std::endl;
 	}
 }
+

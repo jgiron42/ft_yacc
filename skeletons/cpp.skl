@@ -33,6 +33,13 @@ yyParser::yyParser()
 
 }
 
+#ifdef YY_USE_CPP_LEX
+%%[SYM_PREFIX]%%Lexer &yyParser::get_lexer()
+{
+	return this->lexer;
+}
+#endif
+
 int yyParser::yy_stack_push(yyParser::yy_stack_type value)
 {
 	this->yy_stack.emplace_back(value);

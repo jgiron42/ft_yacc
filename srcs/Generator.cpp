@@ -1,4 +1,5 @@
 #include "Generator.hpp"
+#include <string.h>
 
 void Generator::set(std::string name, std::string definition) {
 	this->definitions[name] = definition;

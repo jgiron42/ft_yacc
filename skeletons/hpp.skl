@@ -42,6 +42,9 @@ public:
 	yyParser();
 #endif
 	int yyparse();
+#ifdef YY_USE_CPP_LEX
+	%%[SYM_PREFIX]%%Lexer &get_lexer();
+#endif
 private:
 	int yy_stack_push(yy_stack_type value);
 	void yy_stack_pop(size_t n);

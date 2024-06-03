@@ -87,7 +87,7 @@ private:
 	void															generate_shifts_and_gotos(State &state);
 	void															solve_conflicts(State &state);
 	void															create_epsilons(State &state);
-	int																get_rule_precedence(const Rule &);
+	int																get_rule_precedence(const Rule &) const;
 protected:
 	[[nodiscard]] bool												is_terminal(const std::string &sym) const;
 	void				add_token(const std::string &name, Token &&);
