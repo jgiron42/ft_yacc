@@ -1,8 +1,5 @@
 #include "Scanner.hpp"
-#include <stdio.h>
-#include <stdexcept>
-#include <cstring>
-#include <iostream>
+#include <algorithm>
 
 extern int lineno;
 
