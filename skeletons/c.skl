@@ -1,6 +1,7 @@
 
 %%[DEFINES]%%
 
+
 #ifndef YYSTYPE
 typedef %%[YYSTYPE]%% YYSTYPE;
 #endif
@@ -20,7 +21,10 @@ enum yy_token_definitions {
 
 #include <sys/types.h>
 #include <string.h>
-#define YY_STACK_ELEMENT(N) (yy_stack[yy_stack_size - 1 + (N - 1)].value)
+#include <stdlib.h>
+
+//#define YY_STACK_ELEMENT(N) (yy_stack[yy_stack_size - 1 + (N - 1)].value)
+#define YY_STACK_ELEMENT(N) (yy_stack[yy_stack_size - 1 - yy_reduce_table[-yy_yacc_transitions[yy_stack_top()->state][yytok]] + (N - 1)].value)
 #define YY_ACCESS_TYPE(ELEM, TYPE) (ELEM.TYPE)
 #define YYRECOVERING (yy_error_state != 0)
 #define YYERROR do {yy_error_state=4;goto yy_end_of_semantic_action;} while (0)
@@ -99,7 +103,7 @@ int	yy_lookahead()
 #endif
 		if (yytok < 0)
 			yytok = 0;
-		if (yytok >= (sizeof(yy_map_token) / sizeof(*yy_map_token)) || (yytok != 0 && !yy_map_token[yytok]))
+		if ((size_t)yytok >= (sizeof(yy_map_token) / sizeof(*yy_map_token)) || (yytok != 0 && !yy_map_token[yytok]))
 			yy_stack_top()->token = -2;
 		else
 			yy_stack_top()->token = yy_map_token[yytok];
@@ -110,7 +114,7 @@ int	yy_lookahead()
 
 int	yy_shift(int state)
 {
-	return yy_stack_push((yy_stack_type){state, -1});
+	return yy_stack_push((yy_stack_type){state, -1,{}});
 }
 
 
@@ -155,20 +159,23 @@ int yyinternal_yyparse(void)
 #endif
 			int yy_rule = -yy_yacc_transitions[yy_stack_top()->state][yytok];
 			int yy_lookahead = yy_stack_top()->token;
-			yy_stack_pop(yy_reduce_table[yy_rule]);
+//			yy_stack_pop(yy_reduce_table[yy_rule]);
 			switch (yy_rule)
 			{
 				%%[RULES]%%
 			}
 
 			yy_end_of_semantic_action:;
-			yy_stack_top()->token = yy_reduce_tokens[yy_rule];
-			yy_stack_top()->value = yylval;
+
+			yy_stack_type tmp = *(yy_stack_top());
+			yy_stack_size -= yy_reduce_table[yy_rule];
+			*(yy_stack_top()) = (yy_stack_type){yy_stack_top()->state, yy_reduce_tokens[yy_rule], yylval};
+			yy_stack_push(tmp);
+			yy_stack_top()->state = yy_yacc_transitions[yy_stack[yy_stack_size - 2].state][yy_stack[yy_stack_size - 2].token];
 #ifdef YYDEBUG
 			if (yydebug)
 				fprintf(stderr, "goto %d\n", yy_yacc_transitions[yy_stack_top()->state][yy_stack_top()->token]);
 #endif
-			yy_stack_push((yy_stack_type){ yy_yacc_transitions[yy_stack_top()->state][yy_stack_top()->token], yy_lookahead });
 			if (yy_error_state == 4) // special value, set by YYERROR
 			{
 				yy_error_state = 0;
