@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <string.h>
+#include <iostream>
 #define YY_STACK_ELEMENT(N) (yy_stack[yy_stack.size() - 1 - yy_reduce_table[-yy_yacc_transitions[yy_stack_top()->state][yytok]] + (N - 1)].value)
 #ifdef YY_COMPLETE_SYMBOL
 # include <variant>
@@ -210,7 +211,11 @@ void yyParser::yy_show_stack()
 {
 	std::cout << "stack:" << std::endl;
 	for (auto &e : this->yy_stack)
+#ifdef YY_USE_CPP_LEX
 		std::cout << " " << e.token << " " << e.value.index() << std::endl;
+#else
+		std::cout << " " << e.token << std::endl;
+#endif
 }
 
 int yyParser::yyparse(void)
