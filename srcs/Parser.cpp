@@ -1,8 +1,9 @@
 #include "Parser.hpp"
+#include "CommandLine.hpp"
 #include <iostream>
 #include <regex>
 
-Parser::Parser(std::list<Scanner::token> l) : tokens(l), config({}) {}
+Parser::Parser(Scanner &scanner) : scanner(scanner), config({}) {}
 
 bool Parser::parse() {
 	this->begin();
@@ -29,7 +30,7 @@ void Parser::parse_def() {
 		}
 		else if (auto u = accept(Scanner::token::UNION))
 		{
-			this->config.stack_type = "union " + expect(Scanner::token::ACTION).value;
+			this->config.stack_type = expect(Scanner::token::ACTION).value;
 			this->config.union_enabled = true;
 		}
 		else if (accept(Scanner::token::VARIANT))
@@ -105,6 +106,11 @@ void Parser::parse_rules() {
 			this->add_error(symbol.file, symbol.line, "a token appears on the left side of a production", SyntaxError::Error);
 		this->lalr.add_token(symbol.value, {false, -1, LALR::Token::DEFAULT}); // add the token to the list of token
 		this->lalr.add_token_mapping(symbol.value);
+
+		if (auto type = accept(Scanner::token::TAG)) {
+			this->config.token_types[symbol.value] = type->value;
+		}
+
 		expect(static_cast<Scanner::token::token_type>(':'));
 		do {
 			LALR::Rule r;
@@ -138,7 +144,7 @@ void Parser::parse_rules() {
 						r.syntax.push_back(get_action_rule(r.action, r.syntax));
 					r.action = component->value;
 				}
-				r.action = substitute_action(r.symbol, r.syntax, r.action);
+				r.real_syntax = r.syntax;
 				this->lalr.add_rule(LALR::Rule(r));
 			} catch (std::exception &e) {
 				this->add_error(file, line, e.what(), SyntaxError::Error);
@@ -146,52 +152,6 @@ void Parser::parse_rules() {
 		} while (accept(static_cast<Scanner::token::token_type>('|')));
 		expect(static_cast<Scanner::token::token_type>(';'));
 	}
-}
-
-std::string Parser::substitute_action(const std::string & symbol, std::vector<std::string> syntax, const std::string &action) {
-	static std::regex comments_and_strings("(/\\*([^*]|\\*[^/])*\\*/|\"(\\\\([^\n]|[0-7]{1,3}|x[[:xdigit:]]{1,2})|[^\n\"\\\\])*\")", std::regex_constants::extended);
-	static std::regex pseudo_var("\\$(<([^>]+)>)?(\\$|-?[[:digit:]]+)", std::regex_constants::extended);
-	std::string ret;
-	for (int i = 0; i < action.size(); i++)
-	{
-		std::match_results<std::string::const_iterator> mr;
-		std::string s2(action.substr(i));
-		if (std::regex_search(s2, mr, comments_and_strings, std::regex_constants::match_continuous)) {
-			ret.append(mr[0]);
-			i += mr[0].str().size();
-		}
-		if (std::regex_search(s2, mr, pseudo_var, std::regex_constants::match_continuous))
-		{
-			std::string type;
-			std::string access;
-			if (mr[3].str()[0] == '$')
-				access = "yylval";
-			else if (symbol[0] == '@')
-				access = "YY_STACK_ELEMENT(" + mr[3].str() + "-" + std::to_string(syntax.size()) + ")";
-			else
-				access = "YY_STACK_ELEMENT(" + mr[3].str() + ")";
-			if (config.union_enabled || config.variant_enabled)
-			{
-				std::string type;
-				if (mr[2].matched)
-					type = mr[2].str();
-				else if (mr[3].str()[0] == '$' && this->config.token_types.contains(symbol))
-					type = this->config.token_types[symbol];
-				else if (int n = atoi(mr[3].str().c_str()); mr[3].str()[0] != '$' && n > 0 && n <= syntax.size() &&
-					this->config.token_types.contains(syntax[n - 1]))
-					type = this->config.token_types[syntax[n - 1]];
-				else
-					throw std::runtime_error(mr.str() + " of `" + symbol + "` has no declared type");
-				this->config.types.insert(type);
-				access = "YY_ACCESS_TYPE(" + access + ", " + type + ")";
-			}
-			ret.append(access);
-			i += mr[0].str().size() - 1;
-		}
-		else
-			ret.push_back(action[i]);
-	}
-	return ret;
 }
 
 void Parser::parse_tail() {
@@ -232,15 +192,15 @@ std::optional<std::string> Parser::get_tag(bool expected)
 std::string Parser::get_action_rule(const std::string &action, std::vector<std::string> syntax) {
 	std::string sym = lalr.generate_symbol_name();
 	this->lalr.add_token(sym, {false, -1, LALR::Token::DEFAULT}); // add the token to the list of token
-	this->lalr.add_rule({sym, {}, "", substitute_action(sym, syntax, action)});
+	this->lalr.add_rule({sym, {}, syntax, "", action});
 	return sym;
 }
 
-Scanner::token Parser::peak() {return *current;}
+Scanner::token Parser::peak() {return current;}
 
 bool Parser::is_of_type(std::initializer_list<Scanner::token::token_type> &&list) {
 	for (auto &t : list)
-		if (t == current->type)
+		if (t == current.type)
 			return true;
 	return false;
 }
@@ -252,7 +212,7 @@ bool Parser::is_of_type(Scanner::token::token_type t) {
 std::optional<Scanner::token> Parser::accept(std::initializer_list<Scanner::token::token_type> &&list) {
 	if (is_of_type(std::move(list)))
 	{
-			auto ret = *current;
+			auto ret = current;
 			this->advance();
 			return ret;
 	}
@@ -270,16 +230,17 @@ Scanner::token Parser::expect(Scanner::token::token_type t) {
 
 void Parser::unexpected(const std::string expected) {
 	if (!expected.empty())
-		throw UnexpectedToken(*current, expected);
+		throw UnexpectedToken(current, expected);
 	else
-		throw UnexpectedToken(*current);
+		throw UnexpectedToken(current);
 }
 
 void Parser::advance() {
 //	std::cout << current->value << std::endl;
-	current++;
+	current = scanner.next();
 }
 
 void Parser::begin() {
-	this->current = this->tokens.begin();
+//	this->current = this->tokens.begin();
+	this->current = scanner.next();
 }

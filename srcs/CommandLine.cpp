@@ -1,6 +1,9 @@
 #include "CommandLine.hpp"
 #include <unistd.h>
 #include <iostream>
+#include <algorithm>
+
+CommandLine::CommandLine() {}
 
 CommandLine::CommandLine(int argc, char **argv) :
 	input_file(""),
@@ -12,7 +15,7 @@ CommandLine::CommandLine(int argc, char **argv) :
 	language("c")
 {
 	while (1)
-		switch (getopt(argc, argv, "-dltvb:p:r:+"))
+		switch (getopt(argc, argv, "-dltvb:p:r:x:+"))
 		{
 			case 'd':
 				this->write_header = true;
@@ -24,6 +27,11 @@ CommandLine::CommandLine(int argc, char **argv) :
 				break;
 			case '+':
 				this->language = "c++";
+				break;
+			case 'x':
+				this->language = std::string(optarg);
+				std::transform(this->language.begin(), this->language.end(), this->language.begin(),
+							   [](unsigned char c){ return std::tolower(c); });
 				break;
 			case 'v':
 				this->write_description = true;

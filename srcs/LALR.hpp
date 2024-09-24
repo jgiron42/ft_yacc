@@ -29,6 +29,7 @@ public:
 	struct Rule {
 		std::string					symbol;
 		std::vector<std::string>	syntax;
+		std::vector<std::string>	real_syntax;
 		std::string					precedence; // same-as precedence
 		std::string					action;
 	};
@@ -69,6 +70,7 @@ public:
 	void											build(const std::string &start);
 	[[nodiscard]] std::vector<std::vector<int> >	get_table() const;
 	[[nodiscard]] std::vector<std::string>			get_actions() const;
+	[[nodiscard]] std::vector<Rule>			get_rules() const;
 	[[nodiscard]] std::vector<int>					get_token_map() const;
 	[[nodiscard]] std::vector<size_t>				get_reduce_table() const;
 	[[nodiscard]] std::vector<int>					get_reduce_tokens() const;

@@ -3,9 +3,24 @@
 
 extern int lineno;
 
-int  yywrap(void) {return 1;}
+int  Scanner::yywrap(void) {
+	if (this->stream_queue.empty())
+		return 1;
+	else {
+		this->in = this->stream_queue.front();
+		this->stream_queue.pop();
+		return 0;
+	}
+}
 
 Scanner::Scanner(const std::string &f) : filename(f), yyLexer(&stream), stream(f) {}
+
+Scanner::token Scanner::next() {
+	if (auto t= yylex())
+		return token{t, yytext, filename, lineno - (int)std::count(yytext, yytext + yyleng, '\n')};
+	else
+		return token{token::END, "end of file", filename, lineno};
+}
 
 void Scanner::scan() {
 	int t;
@@ -15,3 +30,7 @@ void Scanner::scan() {
 }
 
 std::list<Scanner::token> Scanner::get_tokens() {return this->tokens;}
+
+void	Scanner::append_stream(std::istream * s) {
+	this->stream_queue.push(s);
+}

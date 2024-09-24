@@ -1,6 +1,7 @@
 #include "LALR.hpp"
 #include <algorithm>
 #include "utils.hpp"
+#include "CommandLine.hpp"
 #include <unordered_set>
 
 LALR::LALR() {
@@ -313,11 +314,13 @@ void LALR::solve_conflicts(State &state) {
 }
 
 void LALR::build(const std::string &start) {
+	std::string error_token_name = commandLine.language == "zig" ? "error_token" : "error";
+
 	this->rules[0].syntax = {start, "$end"};
-	this->tokens.insert({"error", {true, 256}});
+	this->tokens.insert({error_token_name, {true, 256}});
 	this->sr_conflicts = 0;
 	this->rr_conflicts = 0;
-	add_token_mapping("error");
+	add_token_mapping(error_token_name);
 	for (size_t i = 0; i < this->states.size(); i++)
 	{
 //		std::cout << "State: " << i << std::endl;
@@ -412,6 +415,10 @@ std::vector<int>	LALR::get_reduce_tokens() const {
 std::vector<std::string>	LALR::get_actions() const {
 	auto v = rules | std::views::transform([](const Rule &r){return r.action;});
 	return {v.begin(), v.end()};
+}
+
+std::vector<LALR::Rule>			LALR::get_rules() const {
+	return this->rules;
 }
 
 std::vector<int> LALR::get_token_map() const {

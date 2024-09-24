@@ -9,6 +9,10 @@ SRCS =	scanner.yy.cpp \
 		CommandLine.cpp \
 		Generator.cpp \
 		Serializer.cpp \
+		serializers/c.cpp \
+		serializers/b.cpp \
+		serializers/cpp.cpp \
+		serializers/zig.cpp \
 		SyntaxError.cpp
 
 SRCS_DIR = srcs

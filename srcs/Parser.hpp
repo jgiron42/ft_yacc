@@ -19,13 +19,11 @@ public:
 			}							associativity;
 			int							value;
 		};
-		std::map<std::string, token>		tokens;
 		std::map<std::string, std::string>	token_types;
 		std::string							start;
 		bool								union_enabled;
 		std::string 						stack_type;
 		bool 								variant_enabled;
-		std::set<std::string>				types; // for c++ variants
 		std::string							header_code;
 		std::string							tail_code;
 		bool 								use_cpp_lex;
@@ -42,12 +40,13 @@ public:
 	 */
 private:
 	Config				config;
-	LALR				lalr;
-	std::list<Scanner::token>			tokens;
-	std::list<Scanner::token>::iterator	current;
+
+	LALR								lalr;
+	Scanner								&scanner;
+	Scanner::token						current;
 	std::list<SyntaxError>				diagnostic;
 public:
-	Parser(std::list<Scanner::token>);
+	Parser(Scanner &);
 	bool	parse();
 	Config	&get_config();
 	LALR	get_LALR();

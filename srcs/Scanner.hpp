@@ -5,6 +5,7 @@
 #include <string>
 #include <list>
 #include <deque>
+#include <queue>
 #include <variant>
 #include "./scanner.yy.hpp"
 class Scanner : public yyLexer {
@@ -79,10 +80,14 @@ public:
 private:
 	std::string						filename;
 	std::list<token>				tokens;
+	std::queue<std::istream*>		stream_queue;
+	int								yywrap(void);
 public:
 	Scanner(const std::string &filename);
 	void				scan();
+	token				next();
 	std::list<token>	get_tokens();
+	void				append_stream(std::istream*);
 };
 
 

@@ -12,7 +12,11 @@ struct CommandLine {
 	bool		debug_defines;
 	std::string language;
 	CommandLine(int argc, char **argv);
+	CommandLine();
+	CommandLine(const CommandLine &) = default;
+	CommandLine &operator=(const CommandLine &) = default;
 };
 
+extern CommandLine commandLine;
 
 #endif

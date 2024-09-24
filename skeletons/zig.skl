@@ -1,0 +1,222 @@
+const std = @import("std");
+
+// #define YY_STACK_ELEMENT(N) (yy_stack[yy_stack.size() - 1 - yy_reduce_table[-yy_yacc_transitions[yy_stack_top()->state][yytok]] + (N - 1)].value)
+// # define YY_ACCESS_TYPE(ELEM, TYPE) (yy_get_or_emplace<TYPE>(ELEM))
+// #define YYRECOVERING (yy_error_state != 0)
+// #define YYERROR do {yy_error_state=4;goto yy_end_of_semantic_action;} while (0)
+// #define yyerrok do {yy_error_state = 0;} while (0)
+// #define yyclearin do {if (!yy_stack.empty()) yy_stack.top()->token = -1;} while (0)
+// #define YYACCEPT do {return 0;} while (0)
+// #define YYABORT do {return 1;} while (0)
+
+stack: Stack,
+
+lexer: *Lexer,
+
+yy_error_state: u8 = 0,
+
+yylval : YYSTYPE = undefined,
+
+yy_rule : usize = undefined,
+
+%%[HEADER_CODE]%%
+
+const Self = @This();
+
+pub const Token = %%[TOKEN_DEFS]%%;
+
+const InternalToken = isize;
+
+pub const YYSTYPE = struct {
+                    	token : union(enum) {
+                    		@"enum" : Enum,
+                    		char : u8,
+                    	},
+                    	value : Value = undefined,
+
+                    	pub const Value = %%[YYSTYPE]%%;
+                    	pub const Enum = Token;
+
+pub const config = struct {
+%%[CONFIG]%%
+};
+                    };
+
+const State = usize;
+
+const Symbol = isize;
+
+const StackElement = struct {
+    state: State,
+    internal_token: InternalToken,
+    value: YYSTYPE,
+};
+
+const Stack = std.ArrayList(StackElement);
+
+const YY_END: Symbol = 0;
+const YY_EPSILON: Symbol = 1;
+
+const YY_ACCEPT : State = %%[ACCEPT_STATE]%%;
+
+pub fn init(allocator: std.mem.Allocator, lexer: *Lexer) Self {
+    return Self{
+        .stack = Stack.init(allocator),
+        .lexer = lexer,
+    };
+}
+
+fn yy_stack_push(self: *Self, element: StackElement) !void {
+    try self.stack.append(element);
+}
+
+fn yy_stack_pop(self: *Self, n: usize) void {
+    self.stack.replaceRange(self.stack.items.len -| n, n, &.{}) catch unreachable;
+}
+
+fn yy_stack_top(self: Self) *StackElement {
+    return &(self.stack.items[self.stack.items.len - 1]);
+}
+
+fn yy_lookahead(self: *Self) !InternalToken {
+    if (self.yy_stack_top().internal_token == -1) {
+        const lexeme = (try self.lexer.yylex()) orelse {
+            self.yy_stack_top().internal_token = 0;
+            return self.yy_stack_top().internal_token;
+        }; // todo: pabo
+        const yytok : usize = switch (lexeme.token) {.@"enum" => |e| @intFromEnum(e), .char => |c| c,};
+        // #ifdef YYDEBUG
+        // 		if (yydebug)
+        // 			fprintf(stderr, "lex %d\n", yytok);
+        // #endif
+
+        if (yytok >= yy_map_token.len or (yytok != 0 and yy_map_token[yytok] == 0)) {
+			self.yy_stack_top().internal_token = -2;
+		} else {
+			self.yy_stack_top().internal_token = yy_map_token[yytok];
+		}
+        self.yy_stack_top().value = lexeme;
+    }
+    return self.yy_stack_top().internal_token;
+}
+
+fn yy_shift(self: *Self, state: State) !void {
+    try self.yy_stack_push(StackElement{
+        .state = state,
+        .internal_token = -1,
+        .value = undefined,
+    });
+}
+
+fn yyinternal_yyparse(self: *Self) !void {
+    self.yy_error_state = 0;
+    try self.yy_shift(0);
+    while (self.yy_stack_top().state != YY_ACCEPT) {
+//    	std.io.getStdErr().writer().any().print("epsilon {}\nlookahead {}, transition: ", .{yy_yacc_transitions[self.yy_stack_top().state][YY_EPSILON],
+//    	try self.yy_lookahead(),
+//    	//yy_yacc_transitions[self.yy_stack_top().state][@intCast(try self.yy_lookahead())],
+//    	}) catch {};
+        if (yy_yacc_transitions[self.yy_stack_top().state][YY_EPSILON] < 0 or // epsilon reduce
+            (try self.yy_lookahead() >= 0 and yy_yacc_transitions[self.yy_stack_top().state][@intCast(try self.yy_lookahead())] < 0))
+        {
+            const yytok = if (yy_yacc_transitions[self.yy_stack_top().state][YY_EPSILON] < 0)
+                YY_EPSILON
+            else
+                try self.yy_lookahead();
+
+            self.yy_rule = @intCast(-yy_yacc_transitions[self.yy_stack_top().state][@intCast(yytok)]);
+//                	std.io.getStdErr().writer().any().print("rule: {}\n", .{self.yy_rule}) catch {};
+            yy_semantic_action: {
+                switch (self.yy_rule) {
+                    %%[RULES]%%
+                    else => {},
+                }
+                break : yy_semantic_action;
+            }
+            try self.stack.replaceRange(
+                self.stack.items.len - @as(usize, @intCast(yy_reduce_table[@intCast(self.yy_rule)])) - 1,
+                @intCast(yy_reduce_table[@intCast(self.yy_rule)]),
+                &.{StackElement{
+                    .state = @intCast(self.stack.items[self.stack.items.len - @as(usize, @intCast(yy_reduce_table[@intCast(self.yy_rule)])) - 1].state),
+                    .internal_token = yy_reduce_tokens[@intCast(self.yy_rule)],
+                    .value = self.yylval,
+                }},
+            );
+            self.yy_stack_top().state = @intCast(yy_yacc_transitions[self.stack.items[self.stack.items.len - 2].state][@intCast(self.stack.items[self.stack.items.len - 2].internal_token)]);
+            if (self.yy_error_state == 4) // special value, set by YYERROR
+            {
+                self.yy_error_state = 0;
+                // todo: goto yy_error_lbl;
+            }
+        } else if (try self.yy_lookahead() >= 0 and yy_yacc_transitions[self.yy_stack_top().state][@intCast(try self.yy_lookahead())] > 0) // shift
+        {
+            const yystate = yy_yacc_transitions[self.yy_stack_top().state][@intCast(try self.yy_lookahead())];
+            try self.yy_shift(@intCast(yystate));
+            if (self.YYRECOVERING())
+                self.yy_error_state -= 1;
+        } else // error
+        {
+            if (!self.YYRECOVERING())
+                yyerror("syntax error");
+            // yy_error_lbl:;
+            if (self.yy_error_state == 3) {
+                if (try self.yy_lookahead() == YY_END)
+                    return error.ParseError;
+                self.yy_stack_top().internal_token = -1;
+            }
+            const save_lookahead = self.yy_stack_top().internal_token;
+            const save_lookahead_value = self.yy_stack_top().value;
+            while (self.stack.items.len > 0 and yy_yacc_transitions[self.yy_stack_top().state][yy_map_token[@intFromEnum(Token.error_token)]] <= 0)
+                self.yy_stack_pop(1);
+            if (self.stack.items.len == 0) {
+                return error.ParseError;
+            }
+            try self.yy_shift(@intCast(yy_yacc_transitions[self.yy_stack_top().state][yy_map_token[@intFromEnum(Token.error_token)]]));
+            self.yy_stack_top().internal_token = save_lookahead;
+            self.yy_stack_top().value = save_lookahead_value;
+            self.yy_error_state = 3;
+        }
+    }
+    return;
+}
+
+fn YYRECOVERING(self: Self) bool {
+    return self.yy_error_state != 0;
+}
+
+fn YY_STACK_ELEMENT(self: *Self, n : usize) *YYSTYPE {
+    return &self.stack.items[self.stack.items.len - 1 - @as(usize, @intCast(yy_reduce_table[self.yy_rule])) + (n - 1)].value;
+}
+
+fn YY_ACCESS_TYPE(elem : *StackElement, name : []const u8) *@TypeOf(@field(elem, name)) {
+	return @field(elem, name);
+}
+
+// void yyParser::yy_show_stack()
+// {
+// 	std::cout << "stack:" << std::endl;
+// 	for (auto &e : this->yy_stack)
+// #ifdef YY_USE_CPP_LEX
+// 		std::cout << " " << e.token << " " << e.value.index() << std::endl;
+// #else
+// 		std::cout << " " << e.token << std::endl;
+// #endif
+// }
+
+pub fn yyparse(self: *Self) !void {
+    self.stack.clearRetainingCapacity();
+    const ret = self.yyinternal_yyparse();
+    return ret;
+}
+
+const yy_map_token = %%[MAP_TOKEN_TABLE]%%;
+
+const yy_reduce_table = %%[REDUCE_TABLE]%%;
+
+const yy_reduce_tokens = %%[REDUCE_TOKENS_TABLE]%%;
+
+const yy_yacc_transitions = %%[TRANSITION_TABLE]%%;
+
+
+
+%%[TAIL_CODE]%%
