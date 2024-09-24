@@ -18,6 +18,8 @@ void ZigSerializer::build() {
 	token_defs += "}";
 	generator.set("TOKEN_DEFS", token_defs);
 
+	generator.set("CONFIG", this->serialize_config());
+
 	generator.set("HEADER_CODE", this->config.header_code);
 
 	generator.set("ACCEPT_STATE", std::to_string(this->lalr.get_accept()));
@@ -72,7 +74,7 @@ std::string ZigSerializer::substitute_action(const LALR::Rule &rule) {
 				access = "self.YY_STACK_ELEMENT(" + std::to_string(offset.value() - (int)rule.real_syntax.size()) + ")";
 			else
 				access = "self.YY_STACK_ELEMENT(" + std::to_string(offset.value()) + ")";
-			if (config.union_enabled || config.variant_enabled || commandLine.language == "zig")
+			if (config.union_enabled || config.variant_enabled)
 			{
 				std::string type;
 				if (mr[2].matched)
@@ -99,12 +101,29 @@ std::string ZigSerializer::substitute_action(const LALR::Rule &rule) {
 	return ret;
 }
 
+std::string ZigSerializer::serialize_config() const {
+	return "pub const variant : bool = " + std::to_string(this->config.variant_enabled) + " == 1;\n";
+}
+
 std::string ZigSerializer::serialize_yystype() const {
-//	if (this->config.variant_enabled)
-//		return this->serialize_variant();
-	if (this->config.union_enabled)
+	if (this->config.variant_enabled)
+		return this->serialize_variant();
+	else if (this->config.union_enabled)
 		return "union " + this->config.stack_type;
 	return "Token";
+}
+
+std::string ZigSerializer::serialize_variant() const {
+	std::set<std::string> types;
+	for (auto &p : this->types)
+		types.insert(p.first);
+	for (auto &p : this->config.token_types)
+		types.insert(p.second);
+	std::string ret = "";
+	for (auto &t : types)
+		ret += "\t@\"" + t + "\" : " + t + ",\n";
+//		ret += "\t@typeName(" + t + ") : ,\n";
+	return "union {\n" + ret + "}";
 }
 
 std::string ZigSerializer::serialize_zig_union() const {

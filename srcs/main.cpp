@@ -5,7 +5,6 @@
 #include "serializers/b.hpp"
 #include "serializers/cpp.hpp"
 #include "serializers/zig.hpp"
-#include "Generator.hpp"
 #include "LALR.hpp"
 #include "Parser.hpp"
 #include "CommandLine.hpp"

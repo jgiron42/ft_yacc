@@ -20,7 +20,9 @@ private:
 	std::string serialize_zig_union() const;
 	std::string serialize_yystype() const;
 	std::string serialize_rules();
+	std::string serialize_config() const;
 	std::string serialize_transitions(size_t &size) const;
+	std::string serialize_variant() const;
 	std::string substitute_action(const LALR::Rule &rule);
 	template <typename T>
 	std::string serialize_array(const std::vector<T> &array) const;
